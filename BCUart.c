@@ -52,19 +52,19 @@ void bcUartInit(void)
 {
     // Always use the step-by-step init procedure listed in the USCI chapter of
     // the F5xx Family User's Guide
-    UCA1CTL1 |= UCSWRST;        // Put the USCI state machine in reset
-    UCA1CTL1 |= UCSSEL__SMCLK;  // Use SMCLK as the bit clock
+    UCA0CTL1 |= UCSWRST;        //KJ: UCA1CTL1 |= UCSWRST;        // Put the USCI state machine in reset
+    UCA0CTL1 |= UCSSEL__SMCLK;  //KJ: UCA1CTL1 |= UCSSEL__SMCLK;  // Use SMCLK as the bit clock
 
     // Set the baudrate
-    UCA1BR0 = UCA1_BR0;
-    UCA1BR1 = UCA1_BR1;
-    UCA1MCTL = (UCA1_BRF << 4) | (UCA1_BRS << 1) | (UCA1_OS);
+    UCA0BR0 = UCA0_BR0;			//KJ: UCA1BR0 = UCA1_BR0;
+    UCA0BR1 = UCA0_BR1;			//KJ: UCA1BR1 = UCA1_BR1;
+    UCA0MCTL = (UCA0_BRF << 4) | (UCA0_BRS << 1) | (UCA0_OS);	//KJ: UCA1MCTL = (UCA1_BRF << 4) | (UCA1_BRS << 1) | (UCA1_OS);
 
-    P4SEL |= BIT4+BIT5;         // Configure these pins as TXD/RXD
+    P3SEL |= BIT3+BIT4;			//KJ: P4SEL |= BIT4+BIT5;         // Configure these pins as TXD/RXD
 
-    UCA1CTL1 &= ~UCSWRST;       // Take the USCI out of reset
-    UCA1IE |= UCRXIE;           // Enable the RX interrupt.  Now, when bytes are
-                                // rcv'ed, the USCI_A1 vector will be generated.
+    UCA0CTL1 &= ~UCSWRST;       //KJ: UCA1CTL1 &= ~UCSWRST;       // Take the USCI out of reset
+    UCA0IE |= UCRXIE;           //KJ: UCA1IE |= UCRXIE;           // Enable the RX interrupt.  Now, when bytes are
+    							// rcv'ed, the USCI_A1 vector will be generated.
 }
 
 
@@ -76,10 +76,10 @@ void bcUartSend(uint8_t * buf, uint8_t len)
     // Write each byte in buf to USCI TX buffer, which sends it out
     while (i < len)
     {
-        UCA1TXBUF = *(buf+(i++));
+        UCA0TXBUF = *(buf+(i++));	//KJ: UCA1TXBUF = *(buf+(i++));
 
         // Wait until each bit has been clocked out...
-        while(!(UCTXIFG==(UCTXIFG & UCA1IFG))&&((UCA1STAT & UCBUSY)==UCBUSY));
+        while(!(UCTXIFG==(UCTXIFG & UCA0IFG))&&((UCA0STAT & UCBUSY)==UCBUSY));	//KJ: while(!(UCTXIFG==(UCTXIFG & UCA1IFG))&&((UCA1STAT & UCBUSY)==UCBUSY));
     }
 }
 
@@ -91,7 +91,7 @@ uint16_t bcUartReceiveBytesInBuffer(uint8_t* buf)
     uint16_t i, count;
 
     // Hold off ints for incoming data during the copy
-    UCA1IE &= ~UCRXIE;
+    UCA0IE &= ~UCRXIE;	//KJ: UCA1IE &= ~UCRXIE;
 
     for(i=0; i<bcUartRcvBufIndex; i++)
     {
@@ -103,7 +103,7 @@ uint16_t bcUartReceiveBytesInBuffer(uint8_t* buf)
     bcUartRxThreshReached = 0;
 
     // Restore USCI interrupts, to resume receiving data.
-    UCA1IE |= UCRXIE;
+    UCA0IE |= UCRXIE;	//KJ: UCA1IE |= UCRXIE;
 
     return count;
 }
@@ -115,7 +115,7 @@ uint16_t bcUartReceiveBytesInBuffer(uint8_t* buf)
 #pragma vector=USCI_A1_VECTOR
 __interrupt void bcUartISR(void)
 {
-    bcUartRcvBuf[bcUartRcvBufIndex++] = UCA1RXBUF;  // Fetch the byte, store
+    bcUartRcvBuf[bcUartRcvBufIndex++] = UCA0RXBUF;  //KJ: bcUartRcvBuf[bcUartRcvBufIndex++] = UCA1RXBUF;  // Fetch the byte, store
                                                     // it in the buffer.
 
     // Wake main, to fetch data from the buffer.

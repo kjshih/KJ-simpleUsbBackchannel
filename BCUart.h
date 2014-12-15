@@ -65,10 +65,10 @@ http://processors.wiki.ti.com/index.php/USCI_UART_Baud_Rate_Gen_Mode_Selection
    Guide.) */
 
 #define UCA1_OS   1    // 1 = oversampling mode, 0 = low-freq mode
-#define UCA1_BR0  17   // Value of UCA1BR0 register
+#define UCA1_BR0  4    // Value of UCA1BR0 register
 #define UCA1_BR1  0    // Value of UCA1BR1 register
-#define UCA1_BRS  0    // Value of UCBRS field in UCA1MCTL register
-#define UCA1_BRF  6    // Value of UCBRF field in UCA1MCTL register
+#define UCA1_BRS  5    // Value of UCBRS field in UCA1MCTL register
+#define UCA1_BRF  3    // Value of UCBRF field in UCA1MCTL register
 
 
 // There is no hardware RTS/CTS handshaking in this example.  Your code must

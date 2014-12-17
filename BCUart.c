@@ -110,9 +110,9 @@ uint16_t bcUartReceiveBytesInBuffer(uint8_t* buf)
 
 
 
-// The USCI_A1 receive interrupt service routine (ISR).  Executes every time a
+// The USCI_A0 receive interrupt service routine (ISR).  Executes every time a
 // byte is received on the back-channel UART.
-#pragma vector=USCI_A1_VECTOR
+#pragma vector=USCI_A0_VECTOR
 __interrupt void bcUartISR(void)
 {
     bcUartRcvBuf[bcUartRcvBufIndex++] = UCA0RXBUF;  //KJ: bcUartRcvBuf[bcUartRcvBufIndex++] = UCA1RXBUF;  // Fetch the byte, store

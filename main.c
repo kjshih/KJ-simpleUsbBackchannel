@@ -89,13 +89,14 @@ void main(void)
     PMM_setVCore(PMM_BASE, PMM_CORE_LEVEL_2);
 
     initPorts();           // Config all the GPIOS for low-power (output low)
-    initClocks(8000000);   // Config clocks. MCLK=SMCLK=FLL=8MHz; ACLK=REFO=32kHz
+    initClocks(1048576);	//KJ: initClocks(8000000);   // Config clocks. MCLK=SMCLK=FLL=8MHz; ACLK=REFO=32kHz
     bcUartInit();          // Init the back-channel UART
     USB_setup(TRUE,TRUE);  // Init USB; if a USB host (PC) is present, connect
     __enable_interrupt();  // Enable interrupts globally
 
     while(1)
     {
+/* KJ:
        // Look for rcv'ed bytes on the backchannel UART. If any, send over USB.
        rxByteCount = bcUartReceiveBytesInBuffer(buf_bcuartToUsb);
        if(rxByteCount)
@@ -111,7 +112,9 @@ void main(void)
        {
            bcUartSend(buf_usbToBcuart, rxByteCount);
        }
+*/
     }
+
 }
 
 

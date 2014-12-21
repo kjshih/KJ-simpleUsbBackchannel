@@ -47,11 +47,11 @@
 
 1) Set the SMCLK speed and desired baudrate.
 
-   The baudrate is determined by the UCA1BR0, UCA1BR1, and UCA1MCTL registers.
-   UCA1MCTL has three relevant fields:  UCA1BRF, UCA1BRS, and UCOS16.  The
+   The baudrate is determined by the UCA0BR0, UCA0BR1, and UCA0MCTL registers.
+   UCA0MCTL has three relevant fields:  UCA0BRF, UCA0BRS, and UCOS16.  The
    settings below are for:
-   SMCLK = 8MHz
-   baudrate = 28.8kbps
+   SMCLK = 1048576Hz
+   baudrate = 115200bps
 
    If you change the SMCLK speed, or want a different baudrate, you need to
    change these values.  An easy way to determine them is the calculator at
@@ -64,11 +64,11 @@ http://processors.wiki.ti.com/index.php/USCI_UART_Baud_Rate_Gen_Mode_Selection
    Ultimately, the final reference is the UCS chapter of the F5xx Family User's
    Guide.) */
 
-#define UCA1_OS   1    // 1 = oversampling mode, 0 = low-freq mode
-#define UCA1_BR0  4    // Value of UCA1BR0 register
-#define UCA1_BR1  0    // Value of UCA1BR1 register
-#define UCA1_BRS  5    // Value of UCBRS field in UCA1MCTL register
-#define UCA1_BRF  3    // Value of UCBRF field in UCA1MCTL register
+#define UCA0_OS   0		// 1 = oversampling mode, 0 = low-freq mode
+#define UCA0_BR0  9		//KJ: 17	// Value of UCA0BR0 register
+#define UCA0_BR1  0		//KJ: 0		// Value of UCA0BR1 register
+#define UCA0_BRS  1		//KJ: 0		// Value of UCBRS field in UCA0MCTL register
+#define UCA0_BRF  0		//KJ: 6		// Value of UCBRF field in UCA0MCTL register
 
 
 // There is no hardware RTS/CTS handshaking in this example.  Your code must

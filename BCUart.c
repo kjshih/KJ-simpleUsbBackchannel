@@ -33,6 +33,14 @@
 #include "msp430.h"
 #include "BCUart.h"
 
+#include "USB_config/descriptors.h"
+#include "USB_app/usbConstructs.h"
+
+extern WORD rxByteCount;                        // Momentarily stores the number of bytes received
+extern BYTE buf_bcuartToUsb[BC_RXBUF_SIZE];     // Same size as the UART's rcv buffer
+extern BYTE buf_usbToBcuart[128];               // This can be any size
+
+
 // Receive buffer for the UART.  Incoming bytes need a place to go immediately,
 // otherwise there might be an overrun when the next comes in.  The USCI ISR
 // puts them here.
@@ -46,24 +54,35 @@ uint16_t bcUartRcvBufIndex = 0;
 uint8_t  bcUartRxThreshReached = 0;
 
 
-// Initializes the USCI_A1 module as a UART, using baudrate settings in
+// Initializes the USCI_A0 module as a UART, using baudrate settings in
 // bcUart.h.  The baudrate is dependent on SMCLK speed.
 void bcUartInit(void)
 {
     // Always use the step-by-step init procedure listed in the USCI chapter of
     // the F5xx Family User's Guide
-    UCA1CTL1 |= UCSWRST;        // Put the USCI state machine in reset
-    UCA1CTL1 |= UCSSEL__SMCLK;  // Use SMCLK as the bit clock
+    UCA0CTL1 |= UCSWRST;        // Put the USCI state machine in reset	//KJ:
+    UCA0CTL1 |= UCSSEL__SMCLK;  // Use SMCLK as the bit clock	//KJ:
 
     // Set the baudrate
-    UCA1BR0 = UCA1_BR0;
-    UCA1BR1 = UCA1_BR1;
-    UCA1MCTL = (UCA1_BRF << 4) | (UCA1_BRS << 1) | (UCA1_OS);
+    UCA0BR0 = UCA0_BR0;	//KJ:
+    UCA0BR1 = UCA0_BR1;	//KJ:
+    UCA0MCTL = (UCA0_BRF << 4) | (UCA0_BRS << 1) | (UCA0_OS);	//KJ:
 
-    P4SEL |= BIT4+BIT5;         // Configure these pins as TXD/RXD
+    P3SEL |= BIT3+BIT4;         // Configure these pins as TXD/RXD
 
-    UCA1CTL1 &= ~UCSWRST;       // Take the USCI out of reset
-    UCA1IE |= UCRXIE;           // Enable the RX interrupt.  Now, when bytes are
+    P2DIR |= BIT6;	//KJ: EAP_RX_ACK_CONFIG();
+	P2OUT |= BIT6;	//KJ: EAP_RX_ACK_SET();
+
+	P2DIR &= ~BIT3;	//KJ: EAP_TX_ACK_CONFIG();
+	P2IES |= BIT3;
+	P2IFG &= ~BIT3;
+	P2IE |= BIT3;
+
+	// suspend the MCM
+	P2OUT &= ~BIT6;	//KJ: EAP_RX_ACK_CLR();
+
+    UCA0CTL1 &= ~UCSWRST;       // Take the USCI out of reset	//KJ:
+    UCA0IE |= UCRXIE;           // Enable the RX interrupt.  Now, when bytes are	//KJ:
                                 // rcv'ed, the USCI_A1 vector will be generated.
 }
 
@@ -76,10 +95,10 @@ void bcUartSend(uint8_t * buf, uint8_t len)
     // Write each byte in buf to USCI TX buffer, which sends it out
     while (i < len)
     {
-        UCA1TXBUF = *(buf+(i++));
+        UCA0TXBUF = *(buf+(i++));	//KJ:
 
         // Wait until each bit has been clocked out...
-        while(!(UCTXIFG==(UCTXIFG & UCA1IFG))&&((UCA1STAT & UCBUSY)==UCBUSY));
+        while(!(UCTXIFG==(UCTXIFG & UCA0IFG))&&((UCA0STAT & UCBUSY)==UCBUSY));	//KJ:
     }
 }
 
@@ -91,7 +110,7 @@ uint16_t bcUartReceiveBytesInBuffer(uint8_t* buf)
     uint16_t i, count;
 
     // Hold off ints for incoming data during the copy
-    UCA1IE &= ~UCRXIE;
+    UCA0IE &= ~UCRXIE;	//KJ:
 
     for(i=0; i<bcUartRcvBufIndex; i++)
     {
@@ -103,20 +122,23 @@ uint16_t bcUartReceiveBytesInBuffer(uint8_t* buf)
     bcUartRxThreshReached = 0;
 
     // Restore USCI interrupts, to resume receiving data.
-    UCA1IE |= UCRXIE;
+    UCA0IE |= UCRXIE;	//KJ:
 
     return count;
 }
 
 
 
-// The USCI_A1 receive interrupt service routine (ISR).  Executes every time a
+// The USCI_A0 receive interrupt service routine (ISR).  Executes every time a
 // byte is received on the back-channel UART.
-#pragma vector=USCI_A1_VECTOR
+#pragma vector=USCI_A0_VECTOR	//KJ:
 __interrupt void bcUartISR(void)
 {
-    bcUartRcvBuf[bcUartRcvBufIndex++] = UCA1RXBUF;  // Fetch the byte, store
+    bcUartRcvBuf[bcUartRcvBufIndex++] = UCA0RXBUF;  // Fetch the byte, store	//KJ:
                                                     // it in the buffer.
+
+    P2OUT &= ~BIT6;	//KJ: EAP_RX_ACK_CLR();
+    P2OUT |= BIT6;	//KJ: EAP_RX_ACK_SET();
 
     // Wake main, to fetch data from the buffer.
     if(bcUartRcvBufIndex >= BC_RX_WAKE_THRESH)
@@ -125,3 +147,23 @@ __interrupt void bcUartISR(void)
         __bic_SR_register_on_exit(LPM3_bits);       // Exit LPM0-3
     }
 }
+
+
+
+
+#pragma vector=PORT2_VECTOR	//KJ: EAP_TX_ACK_VECTOR
+__interrupt void txAckIsr(void)
+{
+    if (P2IFG & BIT3)	//KJ: EAP_TX_ACK_TST()
+    {
+        // Look for received bytes over USB. If any, send over backchannel UART.
+        rxByteCount = cdcReceiveDataInBuffer(buf_usbToBcuart, sizeof(buf_usbToBcuart), CDC0_INTFNUM);
+        //rxByteCount = hidReceiveDataInBuffer(buf_usbToBcuart, sizeof(buf_usbToBcuart), HID0_INTFNUM);
+        if(rxByteCount)
+        {
+            bcUartSend(buf_usbToBcuart, rxByteCount);
+        }
+    }
+    __bic_SR_register_on_exit(LPM3_bits);	//KJ: WAKEUP();
+}
+
